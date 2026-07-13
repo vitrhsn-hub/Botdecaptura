@@ -1,12 +1,12 @@
 # Botdecaptura
 Bot de captura de dados web para automação das atividades de divida ativa, reintegração de posse e outras atividades
 
-
+## primmeiro importamos as bibibliotecas e ferremanetas que serão usadas
 import json
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 
-# primeira etapa do codigo é a informações basicas para o bot realizar o login, url do site, usuario, senha, orgão que deseja efetuar login e processo alvo
+## essa etapa do codigo é a informações basicas para o bot realizar o login, url do site, usuario, senha, orgão que deseja efetuar login e processo alvo
 
     def capturar_resumo_processo():
         # 1. Configurações
@@ -15,6 +15,8 @@ from playwright.sync_api import sync_playwright
         senha = "Sua senha"
         orgao_alvo = "****"  # Nome do Orgão exatamente como aparece na lista
         processo_alvo = "SEI-XXXXXX/XXXXXX/20XX"
+        
+## start do plawright para o bot acessar o pagina web 
 
     with sync_playwright() as p:
         # headless=False para você ver o navegador abrindo e selecionando as opções
