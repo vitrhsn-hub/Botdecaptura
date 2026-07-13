@@ -1,12 +1,12 @@
 # Botdecaptura
 Bot de captura de dados web para automação das atividades de divida ativa, reintegração de posse e outras atividades
 
-## primmeiro importamos as bibibliotecas e ferremanetas que serão usadas
-import json
-from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright
+### primmeiro importamos as bibibliotecas e ferremanetas que serão usadas 
+     import json
+     from bs4 import BeautifulSoup
+     from playwright.sync_api import sync_playwright
 
-## essa etapa do codigo é a informações basicas para o bot realizar o login, url do site, usuario, senha, orgão que deseja efetuar login e processo alvo
+### essa etapa do codigo é a informações basicas para o bot realizar o login, url do site, usuario, senha, orgão que deseja efetuar login e processo alvo
 
     def capturar_resumo_processo():
         # 1. Configurações
@@ -16,13 +16,15 @@ from playwright.sync_api import sync_playwright
         orgao_alvo = "****"  # Nome do Orgão exatamente como aparece na lista
         processo_alvo = "SEI-XXXXXX/XXXXXX/20XX"
         
-## start do plawright para o bot acessar o pagina web 
+### start do plawright para o bot acessar o pagina web 
 
     with sync_playwright() as p:
         # headless=False para você ver o navegador abrindo e selecionando as opções
         browser = p.chromium.launch(headless=False)
         context = browser.new_context()
         page = context.new_page()
+
+### bot incia a ação de acesso a pagina SEI e efetua o login prevviamente preenchido (cuidado, essa parte por enquanto não é sigilosa, logo sua senha está exposta)
 
         try:
             print("[*] Acessando a página do SEI-RJ...")
@@ -32,7 +34,9 @@ from playwright.sync_api import sync_playwright
             page.fill("id=txtUsuario", usuario)
             page.fill("id=pwdSenha", senha)
 
-            # SELEÇÃO DO ÓRGÃO (Resolve o travamento)
+### nessa parte acontece a seleção do órgão para efetuar login
+
+            # SELEÇÃO DO ÓRGÃO 
             print(f"[*] Selecionando o órgão: {orgao_alvo}...")
             # O Playwright procura o texto visível na lista (label) e seleciona automaticamente
             page.select_option("id=selOrgao", label=orgao_alvo)
@@ -41,9 +45,17 @@ from playwright.sync_api import sync_playwright
             print("[*] Clicando no botão Acessar...")
             page.click("id=sbmAcessar")
 
+### assim que é realizado o login, o bot é orientado a OCULTAR MENU LATERAL para diminuir a margem de erro nos proximos passos
+            # OCULTAR MENU LATERAL
+            print("[*] Ocultando o menu lateral do sistema...")
+            botao_ocultar_menu = page.locator("img[title*='Ocultar Menu do Sistema']").first
+
+### aqui é onde o bot pesquisa o processo alvo que deve ser preenchido no inicio do codigo junto com os dados de login
+
             print(f"[*] Pesquisando o processo {processo_alvo}...")
             page.fill("id=txtPesquisaRapida", processo_alvo)
             page.keyboard.press("Enter")
+-------------------------------------------------------------------------------------------------------------------------------------
 
             # 2. Acessar o Frame de Visualização
             print("[*] A aguardar o carregamento do processo...")
