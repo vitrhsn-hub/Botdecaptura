@@ -55,7 +55,7 @@ Bot de captura de dados web para automação das atividades de divida ativa, rei
             print(f"[*] Pesquisando o processo {processo_alvo}...")
             page.fill("id=txtPesquisaRapida", processo_alvo)
             page.keyboard.press("Enter")
--------------------------------------------------------------------------------------------------------------------------------------
+------------------------funciinal até aqui-------------------------------------------------------------------------------------------------------------
 
             # 2. Acessar o Frame de Visualização
             print("[*] A aguardar o carregamento do processo...")
