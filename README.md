@@ -6,26 +6,23 @@ Bot de captura de dados web para automação das atividades de divida ativa, rei
      from bs4 import BeautifulSoup
      from playwright.sync_api import sync_playwright
 
-### essa etapa do codigo é a informações basicas para o bot realizar o login, url do site, usuario, senha, orgão que deseja efetuar login e processo alvo
-
+### Essa etapa do código é onde será inserido as informações básicas para o bot realizar o login, url do site, usuário, senha, orgão que deseja efetuar login e processo alvo. (!!!!!essa parte por enquanto não é sigilosa, logo sua senha está exposta!!!!!!!!)
     def capturar_resumo_processo():
         # 1. Configurações
         url_sei = "https://sei.rj.gov.br/"
         usuario = "Seu usuario"
         senha = "Sua senha"
-        orgao_alvo = "****"  # Nome do Orgão exatamente como aparece na lista
+        orgao_alvo = "GOVXXXX"  # Nome do Orgão exatamente como aparece na lista
         processo_alvo = "SEI-XXXXXX/XXXXXX/20XX"
         
-### start do plawright para o bot acessar o pagina web 
-
+### Start do plawright para o bot acessar o pagina web anteriormente preenchida. 
     with sync_playwright() as p:
         # headless=False para você ver o navegador abrindo e selecionando as opções
         browser = p.chromium.launch(headless=False)
         context = browser.new_context()
         page = context.new_page()
 
-### bot incia a ação de acesso a pagina SEI e efetua o login prevviamente preenchido (cuidado, essa parte por enquanto não é sigilosa, logo sua senha está exposta)
-
+### Bot incia a ação de acesso a pagina SEI e efetua o login prevviamente preenchido. 
         try:
             print("[*] Acessando a página do SEI-RJ...")
             page.goto(url_sei)
@@ -34,8 +31,7 @@ Bot de captura de dados web para automação das atividades de divida ativa, rei
             page.fill("id=txtUsuario", usuario)
             page.fill("id=pwdSenha", senha)
 
-### nessa parte acontece a seleção do órgão para efetuar login
-
+### Nessa etapa acontece a seleção do órgão para efetuar login.
             # SELEÇÃO DO ÓRGÃO 
             print(f"[*] Selecionando o órgão: {orgao_alvo}...")
             # O Playwright procura o texto visível na lista (label) e seleciona automaticamente
@@ -45,40 +41,55 @@ Bot de captura de dados web para automação das atividades de divida ativa, rei
             print("[*] Clicando no botão Acessar...")
             page.click("id=sbmAcessar")
 
-### assim que é realizado o login, o bot é orientado a OCULTAR MENU LATERAL para diminuir a margem de erro nos proximos passos
+### Assim que é realizado o login, o bot é orientado a OCULTAR MENU LATERAL para diminuir a margem de erro nos proximos passos.
             # OCULTAR MENU LATERAL
             print("[*] Ocultando o menu lateral do sistema...")
             botao_ocultar_menu = page.locator("img[title*='Ocultar Menu do Sistema']").first
-
-### aqui é onde o bot pesquisa o processo alvo que deve ser preenchido no inicio do codigo junto com os dados de login
-
+            
+### Próximo passo é a pesquisa do processo alvo que deve ser preenchido no inicio do codigo junto com os dados de login
             print(f"[*] Pesquisando o processo {processo_alvo}...")
             page.fill("id=txtPesquisaRapida", processo_alvo)
             page.keyboard.press("Enter")
-------------------------funciinal até aqui-------------------------------------------------------------------------------------------------------------
+             
+### Após acessar o processo alvo, o bot acessará o andamento do processo, Aqui ele localiza onde está o botão "Consultar Andamento" por meio do código HTML da pagina web.
+             # 2. Acessar o Frame da Árvore (Esquerda) para clicar no botão
+            print("[*] Acessando a janela da árvore de documentos...")
+            frame_arvore = page.frame(name="ifrArvore")
 
-            # 2. Acessar o Frame de Visualização
-            print("[*] A aguardar o carregamento do processo...")
-            frame_doc = page.frame_locator("frame[name='ifrVisualizacao'], iframe[name='ifrVisualizacao']")
+            if not frame_arvore:
+                print("[-] Janela 'ifrArvore' não encontrada.")
+                return
 
-            # NOVO PASSO: Clicar no botão "Consultar Andamento"
-            print("[*] A clicar no botão 'Consultar Andamento'...")
-            # O 'i' no final torna a busca insensível a maiúsculas/minúsculas
-            botao_andamento = frame_doc.locator("[title*='Consultar Andamento' i]").first
+            # --- CLIQUE VIA JAVASCRIPT NO FRAME DA ÁRVORE ---
+            print("[*] Executando o clique no botão 'Consultar Andamento'...")
+            frame_arvore.evaluate("""() => {
+                let botao = document.querySelector('#divConsultarAndamento a');
+                if (!botao) {
+                    const img = document.querySelector('img[alt="Consultar Andamento"]');
+                    if (img) botao = img.parentElement;
+                }
+                if (botao) botao.click();
+            }""")
 
-            # Aguardamos que o botão fique visível e clicamos
-            botao_andamento.wait_for(state="visible", timeout=15000)
-            botao_andamento.click()
+### Realizando a Leitura da tabela que exibe o andamento e setores por onde o processo foi recebido.
+            # 3. Mudar o foco para o Frame de Visualização (Direita) para ler a tabela
+            print("[*] Lendo a tabela de andamentos na janela principal...")
+            # Pequena pausa para garantir que o clique no lado esquerdo carregou o lado direito
+            page.wait_for_timeout(3000)
 
-            # Agora sim, aguardamos que a tabela de andamentos carregue após o clique
-            print("[*] A ler a tabela de andamentos do SEI...")
-            frame_doc.locator("table.infraTable").first.wait_for(state="attached", timeout=30000)
+            frame_visualizacao = page.frame(name="ifrVisualizacao")
 
-            # 3. Extração do HTML para o BeautifulSoup
-            html_iframe = frame_doc.locator("html").inner_html()
+            if not frame_visualizacao:
+                print("[-] Janela 'ifrVisualizacao' não encontrada após o clique.")
+                return
+
+            frame_visualizacao.locator("table.infraTable").first.wait_for(state="attached", timeout=30000)
+
+            # Extração do HTML para o BeautifulSoup
+            html_iframe = frame_visualizacao.content()
             soup = BeautifulSoup(html_iframe, "html.parser")
 
-            # Procurar a tabela correta (garante que pegamos a tabela com "Data" no cabeçalho)
+            # Procurar a tabela correta com os dados
             tabela_andamentos = None
             for tb in soup.find_all("table", class_="infraTable"):
                 cabecalhos = [th.text.strip().lower() for th in tb.find_all("th")]
@@ -90,7 +101,7 @@ Bot de captura de dados web para automação das atividades de divida ativa, rei
                 print("[-] Tabela de andamentos não encontrada dentro do iframe.")
                 return
 
-            # Mapeamento Dinâmico de Colunas (Evita erros se a ordem das colunas mudar no SEI)
+            # Mapeamento Dinâmico de Colunas
             col_idx = {}
             for i, th in enumerate(tabela_andamentos.find_all("th")):
                 texto_th = th.text.strip().lower()
@@ -104,11 +115,11 @@ Bot de captura de dados web para automação das atividades de divida ativa, rei
                     col_idx["descricao"] = i
 
             # 4. Ler todas as linhas de andamento
-            linhas = tabela_andamentos.find_all("tr")[1:]  # Pula a linha do cabeçalho
+            linhas = tabela_andamentos.find_all("tr")[1:]
             andamentos_extraidos = []
 
             for linha in linhas:
-                colunas = line = linha.find_all("td")
+                colunas = linha.find_all("td")
                 if len(colunas) >= len(col_idx) and len(col_idx) > 0:
                     andamento = {
                         "data_hora": colunas[col_idx.get("data_hora", 0)].text.strip(),
@@ -118,12 +129,12 @@ Bot de captura de dados web para automação das atividades de divida ativa, rei
                     }
                     andamentos_extraidos.append(andamento)
 
+### Exibe o resultado da pesquisa, mostrando o processo pesquisado, qunatidade de andamentos, último setor, último usuário e descrição, além de data e hora.
             # 5. Exibir Resumo Solicitado
             total_andamentos = len(andamentos_extraidos)
 
             if total_andamentos > 0:
-                # O SEI lista o andamento mais recente na última linha da lista [-1]
-                ultimo_andamento = andamentos_extraidos[-1]
+                ultimo_andamento = andamentos_extraidos[0]
 
                 print("\n==================================================")
                 print(f" RESUMO DO PROCESSO: {processo_alvo}")
